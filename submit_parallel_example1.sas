@@ -13,14 +13,14 @@
 **********************************************************************************;
 *** EXAMPLE 1                                                                  ***;
 ***                                                                            ***;
-*** BASIC SAMPLE SIZE SIMULATION FOR A SHARED RANDOM EFFECTS MODEL 20 SIMS     ***;
+*** BASIC SAMPLE SIZE SIMULATION FOR A SHARED RANDOM EFFECTS MODEL 30 SIMS     ***;
 *** OF 100 SUBJECTS PER ARM. EACH SIMULATION IS ANALYSED USING MCMC            ***;
-*** NOTE: 20 SIMS USED TO ILLUSTRATE IN REALITY MANY MORE WOULD BE NEEDED      ***;
+*** NOTE: 30 SIMS USED TO ILLUSTRATE IN REALITY MANY MORE WOULD BE NEEDED      ***;
 ***                                                                            ***;
 **********************************************************************************;
 
 **********************************************************************************;
-*** STEP 1: CREATE SUBJECT LEVEL DATA FOR 5 SCENARIOS AND 20 SIMULATIONS       ***;
+*** STEP 1: CREATE SUBJECT LEVEL DATA FOR 5 SCENARIOS AND 30 SIMULATIONS       ***;
 ***         STRUCTURED IN A SINGLE DATASET BY SCENARIO SIMULATION THEN SUBJECT ***;
 **********************************************************************************;
 
@@ -47,7 +47,7 @@ data simulations;
   *** VARIABILITY OF DATA ***;
   sigma = 5;
  
-  do simulation = 1 to 20;
+  do simulation = 1 to 30;
   do subject    = 1 to 2*100;
 
     trt = ifn(subject le 100, 0, 1);
