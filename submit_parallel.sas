@@ -36,6 +36,7 @@
 |
 *********************************************************************************/;
 
+
 **********************************************************************************;
 ***             START OF TOOL CODE TO INCLUDE AT START OF PROGRAM              ***;
 **********************************************************************************;
@@ -44,30 +45,43 @@
 quit;
 run;
 
-*** SET UP OPTIONS TEMP LIBRARY OPTIONS ***;
+*** SET UP OPTIONS AND TEMP LIBRARY OPTIONS ***;
 options dlcreatedir;
-%sysmstoreclear;
-%let workdir = %sysfunc(pathname(work));
-%let tempdir = &workdir./_parallel_;
-libname templib "&tempdir."; 
-
-
-*** TELL SAS TO STORE ANY COMPILED MACROS IN PERM LIBRARY LOCATION ***;
-options mstored 
-        sasmstore = templib;
+/*%sysmstoreclear;*/
+/**/
+/**** CREATE LIBRARY TO STORE MACROS IN ***;*/
+/*%let dir = %sysfunc(pathname(work));*/
+/*%let dir = &dir./_macs_;*/
+/*libname maclib "&dir.";*/
+/**/
+/**** TELL SAS TO STORE ANY COMPILED MACROS IN PERM LIBRARY LOCATION ***;*/
+/*options mstored */
+/*        sasmstore = maclib;*/
 
 
 *** CREATE MACRO TO INVOKE MULTIPLE SESSIONS FOR SEPERATE PROCESSING ***;
 %macro submit_parallel(sessions   = 2
                       ,input_data =
+					  ,where_data = 
                       ,byvar_list =
                       ,macro_name = 
                       ,mparm_list = ) / store source;
 
+
   %let toolname = SUBMIT_PARALLEL;
 
+
 %********************************************************************************;
-%*** SECTION 1: PROCESS INPUT MACRO PARAMETERS AND CREATE PARAMETERS NEEDED   ***;
+%*** SECTION 1: SET UP LIBNAMES AND FOLDERS NEEDED FOR PARALLEL PROCESSING    ***;
+%********************************************************************************;
+
+  %let tempdir = %sysfunc(pathname(work));
+  %let tempdir = &tempdir./_parallel_;
+  libname templib "&tempdir.";
+
+
+%********************************************************************************;
+%*** SECTION 2: PROCESS INPUT MACRO PARAMETERS AND CREATE PARAMETERS NEEDED   ***;
 %********************************************************************************;
 
  
@@ -147,9 +161,9 @@ options mstored
   %put NO%upcase(te:(&toolname.):) ------------------------------------------------------------------;
   %put NO%upcase(te:(&toolname.):) | Parallel Processing Sessions Requested:;
   %put NO%upcase(te:(&toolname.):) ------------------------------------------------------------------;
+  %put NO%upcase(te:(&toolname.):) | Sessions     : &sessions.;
   %put NO%upcase(te:(&toolname.):) | Dataset      : &input_data.;
   %put NO%upcase(te:(&toolname.):) | By Variables : &byvarlist.;
-  %put NO%upcase(te:(&toolname.):) | Sessions     : &sessions.;
   %put NO%upcase(te:(&toolname.):) | Macro Code   : &macro_name..;
 
   %*** WRITE MACRO PARAMETERS CALL INFORMATION TO THE LOG ***;
@@ -179,21 +193,15 @@ options mstored
 
 
 %********************************************************************************;
-%*** SECTION 2: PREPARE MULTIPLE TEMPORARY LOCATIONS FOR PARALLEL RUN         ***;
+%*** SECTION 3: PREPARE MULTIPLE TEMPORARY LOCATIONS FOR PARALLEL RUN         ***;
 %********************************************************************************;
 
 
-  *** CREATE COPY OF THE INPUT DATASET ***;
+  *** CREATE COPY OF THE INPUT DATASET IN PARALLEL STAGING AREA ***;
   data templib.&indata.;
     set &inlib..&indata.;
+	&where_data.;;
   run;
-
-  *** SORT DATA TO ENSURE ITS IN THE CORRECT ORDER BASED ON BY STATEMENTS ***;
-  %if &byvarlist. ne NONE %then %do; 
-  proc sort data = templib.&indata.;
-    by &byvarlist.;
-  run;
-  %end;
 
   *** SPLIT DATASET INTO GROUPS BASED ON LAST BYVAR IF SPECIFIED OR EACH ROW IF NOT ***;
   data _null_; 
@@ -320,10 +328,11 @@ options mstored
 
       %&macro_call.;
 
+
        *** PUT ALL WORK DATASETS BACK INTO PARENT TEMPLIB ***;
        proc sql noprint;
 
-         *** DATASETS CREATED BY CALLED MACRO ***;
+	     *** DATASETS CREATED BY CALLED MACRO ***;
          select distinct memname 
          into :dsetlist separated by ' ' 
          from sashelp.vmember 
@@ -402,7 +411,7 @@ options mstored
 
   %*** DELETE SESSION DATASETS FROM TEMPLIB ***;
   proc datasets lib = templib nolist;
-    delete  &input_data.
+    delete  &indata.
             %do ii = 1 %to &dsetn.; 
             &&dset&ii.._sess1-&&dset&ii.._sess&total_sessions.
             %end;
